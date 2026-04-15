@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rote-Free · Wushu</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 30px;
+    color: #fff;
+  }
+
+  /* ── 顶部标题 ── */
+  .app-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: #e2b96f;
+    margin-bottom: 14px;
+    text-shadow: 0 0 20px rgba(226,185,111,0.4);
+  }
+
+  /* ── 八拍进度条 ── */
+  .beat-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .beat-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid rgba(226,185,111,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.4);
+    transition: all 0.4s;
+  }
+  .beat-dot.active {
+    background: #e2b96f;
+    border-color: #e2b96f;
+    color: #1a1a2e;
+    box-shadow: 0 0 16px rgba(226,185,111,0.6);
+    transform: scale(1.15);
+  }
+  .beat-dot.done {
+    background: rgba(226,185,111,0.2);
+    border-color: rgba(226,185,111,0.5);
+    color: rgba(226,185,111,0.7);
+  }
+
+  /* ── 主内容区 ── */
+  .main-area {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+  }
+
+  /* ── 动作展示卡片行 ── */
+  .action-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .action-card {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 90px;
+    transition: all 0.3s;
+  }
+  .action-card.prev {
+    opacity: 0.5;
+    flex: 0.85;
+  }
+  .action-card.current {
+    background: rgba(226,185,111,0.12);
+    border-color: rgba(226,185,111,0.4);
+    box-shadow: 0 0 24px rgba(226,185,111,0.15);
+    flex: 1.2;
+  }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .action-card.current .card-label { color: rgba(226,185,111,0.7); }
+
+  .card-num {
+    font-size: 11px;
+    color: rgba(226,185,111,0.8);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .card-name {
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .action-card.current .card-name { font-size: 18px; color: #fff; }
+  .action-card.prev .card-name { font-size: 14px; color: rgba(255,255,255,0.7); }
+
+  .card-voice {
+    margin-top: 6px;
+    font-size: 12px;
+    background: rgba(226,185,111,0.2);
+    color: #e2b96f;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  /* ── 分隔线 ── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.3;
+    margin: 4px 0;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #fff;
+  }
+  .divider span { font-size: 11px; letter-spacing: 2px; }
+
+  /* ── 提问区 ── */
+  .question-box {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .question-text {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  /* ── 选项按钮 ── */
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .options-grid.voice-mode {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .opt-btn {
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 14px 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    line-height: 1.4;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .opt-btn:hover {
+    background: rgba(226,185,111,0.15);
+    border-color: rgba(226,185,111,0.5);
+    transform: translateY(-1px);
+  }
+  .opt-btn.correct {
+    background: rgba(76,175,80,0.25);
+    border-color: #4caf50;
+    color: #81c784;
+    animation: pulse-green 0.4s ease;
+  }
+  .opt-btn.wrong {
+    background: rgba(244,67,54,0.2);
+    border-color: #f44336;
+    color: #ef9a9a;
+    animation: shake 0.35s ease;
+  }
+  .opt-btn.reveal {
+    background: rgba(76,175,80,0.12);
+    border-color: rgba(76,175,80,0.4);
+    color: rgba(129,199,132,0.8);
+  }
+  .opt-btn.voice-ha {
+    background: rgba(233,30,99,0.12);
+    border-color: rgba(233,30,99,0.4);
+    font-size: 22px;
+    letter-spacing: 2px;
+  }
+  .opt-btn.voice-hei {
+    background: rgba(33,150,243,0.12);
+    border-color: rgba(33,150,243,0.4);
+    font-size: 22px;
+    letter-spacing: 2px;
+  }
+  .opt-btn:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  @keyframes pulse-green {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.04); box-shadow: 0 0 20px rgba(76,175,80,0.5); }
+    100% { transform: scale(1); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  /* ── 反馈提示 ── */
+  .feedback {
+    text-align: center;
+    font-size: 13px;
+    margin-top: 10px;
+    min-height: 20px;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+  .feedback.ok { color: #81c784; }
+  .feedback.err { color: #ef9a9a; }
+
+  /* ── 进度条 ── */
+  .progress-wrap {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .progress-track {
+    flex: 1;
+    position: relative;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e2b96f, #f5a623);
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    pointer-events: none;
+  }
+  .progress-thumb {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    background: #e2b96f;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(226,185,111,0.6);
+    cursor: grab;
+    transition: box-shadow 0.2s;
+  }
+  .progress-thumb:hover {
+    box-shadow: 0 0 14px rgba(226,185,111,0.8);
+  }
+  .progress-thumb:active {
+    cursor: grabbing;
+  }
+  .progress-text {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    min-width: 40px;
+    text-align: right;
+  }
+
+  /* ── 完成页 ── */
+  .finish-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    flex: 1;
+    gap: 16px;
+  }
+  .finish-screen.show { display: flex; }
+  .finish-icon { font-size: 64px; }
+  .finish-title { font-size: 26px; font-weight: 700; color: #e2b96f; }
+  .finish-sub { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.8; }
+  .restart-btn {
+    margin-top: 10px;
+    background: #e2b96f;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 14px;
+    padding: 14px 40px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+  }
+  .restart-btn:hover { transform: scale(1.04); box-shadow: 0 4px 20px rgba(226,185,111,0.4); }
+
+  /* ── 统计徽章 ── */
+  .stats-row {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+  }
+  .stat-badge {
+    background: rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-size: 12px;
+    text-align: center;
+  }
+  .stat-badge .num { font-size: 22px; font-weight: 700; color: #e2b96f; }
+
+  /* ── 套路选择页 ── */
+  .select-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,20,0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 20px;
+    padding: 20px;
+  }
+  .select-screen.hidden { display: none; }
+  .select-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #e2b96f;
+    letter-spacing: 4px;
+    margin-bottom: 10px;
+  }
+  .select-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+  .select-cards {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    max-width: 480px;
+  }
+  .select-card {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .select-card:hover {
+    background: rgba(226,185,111,0.1);
+    border-color: rgba(226,185,111,0.5);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(226,185,111,0.15);
+  }
+  .select-card-icon { font-size: 48px; margin-bottom: 12px; }
+  .select-card-name { font-size: 16px; font-weight: 700; color: #fff; }
+  .select-card-count {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<!-- 套路选择页 -->
+<div class="select-screen" id="selectScreen">
+  <div class="select-title">选择套路</div>
+  <div class="select-sub">SELECT ROUTINE</div>
+  <div class="select-cards">
+    <div class="select-card" onclick="startRoutine('quancao')">
+      <div class="select-card-icon">👊</div>
+      <div class="select-card-name">武术拳操</div>
+      <div class="select-card-count">共 49 动作</div>
+    </div>
+    <div class="select-card" onclick="startRoutine('chaquan')">
+      <div class="select-card-icon">⚔️</div>
+      <div class="select-card-name">李氏五路查拳</div>
+      <div class="select-card-count">敬请期待</div>
+    </div>
+  </div>
+</div>
+
+<div class="app-title">Rote-Free</div>
+
+<!-- 八拍进度点 -->
+<div class="beat-bar" id="beatBar"></div>
+
+<!-- 主内容 -->
+<div class="main-area" id="mainArea">
+
+  <!-- 动作卡片行 -->
+  <div class="action-row">
+    <div class="action-card prev" id="prevCard">
+      <div class="card-label">上一动作</div>
+      <div class="card-num" id="prevNum"></div>
+      <div class="card-name" id="prevName">—</div>
+    </div>
+    <div class="action-card current" id="currCard">
+      <div class="card-label">当前动作</div>
+      <div class="card-num" id="currNum">起</div>
+      <div class="card-name" id="currName">起势</div>
+      <div class="card-voice" id="currVoice" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="divider"><span>下一动作是？</span></div>
+
+  <!-- 选择题区 -->
+  <div class="question-box">
+    <div class="question-text" id="questionText">选择下一个动作</div>
+    <div class="options-grid" id="optionsGrid"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <!-- 进度 -->
+  <div class="progress-wrap">
+    <div class="progress-track" id="progressTrack">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      <div class="progress-thumb" id="progressThumb" style="left:0%"></div>
+    </div>
+    <div class="progress-text" id="progressText">起</div>
+  </div>
+
+</div>
+
+<!-- 完成页 -->
+<div class="finish-screen" id="finishScreen">
+  <div class="finish-icon">🦁</div>
+  <div class="finish-title">套路完成！</div>
+  <div class="stats-row">
+    <div class="stat-badge"><div class="num" id="statTotal">0</div>共答题</div>
+    <div class="stat-badge"><div class="num" id="statWrong">0</div>答错次数</div>
+    <div class="stat-badge"><div class="num" id="statAcc">0%</div>正确率</div>
+  </div>
+  <div class="finish-sub" id="finishSub"></div>
+  <button class="restart-btn" onclick="restart()">再练一遍</button>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  套路数据
+// ════════════════════════════════════════════
+const ROUTINES = {
+  quancao: {
+    name: '武术拳操',
+    moves: [
+  { id: '起',    beat: 0,  name: '起势',                              voice: null,  duo: false },
+  { id: '1.11',  beat: 1,  name: '并步砸拳',                          voice: null,  duo: false },
+  { id: '1.12',  beat: 1,  name: '马步左冲拳',                        voice: '哈',  duo: false },
+  { id: '1.2',   beat: 1,  name: '马步冲右拳',                        voice: '哈',  duo: false },
+  { id: '1.3',   beat: 1,  name: '马步冲2拳',                         voice: '哈',  duo: false },
+  { id: '1.4',   beat: 1,  name: '跪步冲拳',                          voice: '哈',  duo: false },
+  { id: '1.5',   beat: 1,  name: '右弓步冲拳',                        voice: null,  duo: false },
+  { id: '1.6',   beat: 1,  name: '马步架打',                          voice: '哈',  duo: false },
+  { id: '1.7',   beat: 1,  name: '左弓步冲拳',                        voice: null,  duo: false },
+  { id: '1.8',   beat: 1,  name: '马步架打',                          voice: '哈',  duo: false },
+  { id: '2.1',   beat: 2,  name: '左弓步切掌',                        voice: null,  duo: false },
+  { id: '2.2',   beat: 2,  name: '并步左搬拳',                        voice: null,  duo: false },
+  { id: '2.3',   beat: 2,  name: '进步右崩拳',                        voice: null,  duo: false },
+  { id: '2.4',   beat: 2,  name: '马步左盘肘',                        voice: null,  duo: false },
+  { id: '2.5',   beat: 2,  name: '右弓步切掌',                        voice: null,  duo: false },
+  { id: '2.6',   beat: 2,  name: '并步右搬拳',                        voice: null,  duo: false },
+  { id: '2.7',   beat: 2,  name: '进步左崩拳',                        voice: null,  duo: false },
+  { id: '2.8',   beat: 2,  name: '马步右盘肘',                        voice: null,  duo: false },
+  { id: '3.1',   beat: 3,  name: '左弓步插掌',                        voice: null,  duo: false },
+  { id: '3.21',  beat: 3,  name: '右盖步冲拳',                        voice: null,  duo: false },
+  { id: '3.22',  beat: 3,  name: '马步按掌',                          voice: '嘿',  duo: false },
+  { id: '3.3',   beat: 3,  name: '右弓步插掌',                        voice: null,  duo: false },
+  { id: '3.41',  beat: 3,  name: '左盖步冲拳',                        voice: null,  duo: false },
+  { id: '3.42',  beat: 3,  name: '马步按掌',                          voice: '嘿',  duo: false },
+  { id: '3.5',   beat: 3,  name: '震脚栽拳',                          voice: null,  duo: false },
+  { id: '3.6',   beat: 3,  name: '马步劈拳',                          voice: '嘿',  duo: false },
+  { id: '3.7',   beat: 3,  name: '弓步贯拳',                          voice: null,  duo: false },
+  { id: '3.8',   beat: 3,  name: '虚步格挡',                          voice: '哈',  duo: false },
+  { id: '4.11',  beat: 4,  name: '腾空飞脚',                          voice: null,  duo: false },
+  { id: '4.12',  beat: 4,  name: '弓步架打',                          voice: '哈',  duo: false },
+  { id: '4.21',  beat: 4,  name: '俯蹲拍地',                          voice: null,  duo: false },
+  { id: '4.22',  beat: 4,  name: '马步掤打',                          voice: null,  duo: false },
+  { id: '4.31',  beat: 4,  name: '侧踹腿',                            voice: null,  duo: false },
+  { id: '4.32',  beat: 4,  name: '勾手推掌',                          voice: null,  duo: false },
+  { id: '4.4',   beat: 4,  name: '虚步推掌',                          voice: null,  duo: false },
+  { id: '4.5',   beat: 4,  name: '弓步搭手',                          voice: '哈',  duo: false },
+  { id: '4.6',   beat: 4,  name: '甲进步左右冲拳，乙撤步格挡',        voice: '哈',  duo: true  },
+  { id: '4.71',  beat: 4,  name: '乙上步弹踢，甲撤步拍脚',            voice: null,  duo: true  },
+  { id: '4.72',  beat: 4,  name: '乙摆拳鞭打，甲俯身格挡',            voice: '哈',  duo: true  },
+  { id: '4.8',   beat: 4,  name: '甲上步抡劈，乙撤步架挡',            voice: '哈',  duo: true  },
+  { id: '5.1',   beat: 5,  name: '乙上步右左冲拳、右勾拳，甲退步格挡',voice: '哈',  duo: true  },
+  { id: '5.2',   beat: 5,  name: '弓步抄拳',                          voice: null,  duo: false },
+  { id: '5.3',   beat: 5,  name: '弓步亮掌',                          voice: null,  duo: false },
+  { id: '5.41',  beat: 5,  name: '勾踢下捋',                          voice: null,  duo: false },
+  { id: '5.42',  beat: 5,  name: '双推掌',                            voice: null,  duo: false },
+  { id: '5.5',   beat: 5,  name: '马步上冲',                          voice: null,  duo: false },
+  { id: '5.6',   beat: 5,  name: '并步收掌',                          voice: null,  duo: false },
+  { id: '5.7',   beat: 5,  name: '并步按掌',                          voice: null,  duo: false },
+  { id: '5.8',   beat: 5,  name: '收势',                              voice: null,  duo: false },
+]
+  },
+  chaquan: {
+    name: '李氏五路查拳',
+    moves: [
+      // TODO: 待填充动作数据
+    ]
+  }
+};
+
+let MOVES = []; // 当前套路动作
+let SOLO_POOL = [];
+let DUO_POOL  = [];
+let currentRoutine = null;
+
+// ════════════════════════════════════════════
+//  状态
+// ════════════════════════════════════════════
+let curIdx = 0;       // 当前动作索引（起势=0）
+let phase = 'action'; // 'voice' | 'action'
+let locked = false;
+let totalAnswers = 0;
+let wrongCount = 0;
+
+// ════════════════════════════════════════════
+//  工具函数
+// ════════════════════════════════════════════
+function shuffle(arr) {
+  const a = [...arr];
+  // 使用 crypto.getRandomValues 增强随机性
+  const rng = () => crypto.getRandomValues(new Uint32Array(1))[0] / 0xFFFFFFFF;
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  // 再打乱一次，防止某些情况下的偏差
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function getRandom(pool, exclude, count) {
+  const filtered = pool.filter(n => n !== exclude);
+  return shuffle(filtered).slice(0, count);
+}
+
+// ════════════════════════════════════════════
+//  渲染八拍进度点
+// ════════════════════════════════════════════
+function renderBeatBar() {
+  const bar = document.getElementById('beatBar');
+  bar.innerHTML = '';
+  const curBeat = MOVES[curIdx].beat;
+  for (let b = 0; b <= 5; b++) {
+    const d = document.createElement('div');
+    d.className = 'beat-dot';
+    if (b === curBeat) d.classList.add('active');
+    else if (b < curBeat) d.classList.add('done');
+    d.textContent = b === 0 ? '起' : b + '段';
+    bar.appendChild(d);
+  }
+}
+
+// ════════════════════════════════════════════
+//  渲染当前/上一动作卡片
+// ════════════════════════════════════════════
+function renderCards() {
+  const cur = MOVES[curIdx];
+  const prev = curIdx > 0 ? MOVES[curIdx - 1] : null;
+
+  document.getElementById('currNum').textContent = cur.id;
+  document.getElementById('currName').textContent = cur.name;
+
+  const voiceEl = document.getElementById('currVoice');
+  if (cur.voice) {
+    voiceEl.textContent = '发「' + cur.voice + '」';
+    voiceEl.style.display = '';
+  } else {
+    voiceEl.style.display = 'none';
+  }
+
+  if (prev) {
+    document.getElementById('prevNum').textContent = prev.id;
+    document.getElementById('prevName').textContent = prev.name;
+  } else {
+    document.getElementById('prevNum').textContent = '';
+    document.getElementById('prevName').textContent = '—';
+  }
+}
+
+// ════════════════════════════════════════════
+//  渲染进度
+// ════════════════════════════════════════════
+function renderProgress() {
+  const total = MOVES.length - 1; // 不含起势
+  const done = curIdx;
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressThumb').style.left = pct + '%';
+  document.getElementById('progressText').textContent = MOVES[curIdx].id;
+}
+
+function jumpToIndex(idx) {
+  if (idx < 0) idx = 0;
+  if (idx >= MOVES.length) idx = MOVES.length - 1;
+  curIdx = idx;
+  const cur = MOVES[curIdx];
+  phase = cur.voice ? 'voice' : 'action';
+  locked = false;
+  totalAnswers = 0;
+  wrongCount = 0;
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  updateAll();
+}
+
+function setupSlider() {
+  const track = document.getElementById('progressTrack');
+  let dragging = false;
+
+  function getIdxFromEvent(e) {
+    const rect = track.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.round(ratio * (MOVES.length - 1));
+  }
+
+  track.addEventListener('mousedown', e => {
+    dragging = true;
+    jumpToIndex(getIdxFromEvent(e));
+  });
+  track.addEventListener('touchstart', e => {
+    dragging = true;
+    jumpToIndex(getIdxFromEvent(e));
+  }, { passive: true });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    jumpToIndex(getIdxFromEvent(e));
+  });
+  document.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    jumpToIndex(getIdxFromEvent(e));
+  }, { passive: true });
+
+  document.addEventListener('mouseup', () => { dragging = false; });
+  document.addEventListener('touchend', () => { dragging = false; });
+
+  // 防止点击选项时误触发跳转
+  track.addEventListener('click', e => e.stopPropagation());
+}
+
+// ════════════════════════════════════════════
+//  渲染选项
+// ════════════════════════════════════════════
+function renderOptions() {
+  const grid = document.getElementById('optionsGrid');
+  const fb = document.getElementById('feedback');
+  fb.textContent = '';
+  fb.className = 'feedback';
+  grid.innerHTML = '';
+  locked = false;
+
+  if (curIdx >= MOVES.length - 1) {
+    // 已完成
+    showFinish();
+    return;
+  }
+
+  const next = MOVES[curIdx + 1];
+
+  // ── 发声阶段 ──────────────────────────────
+  if (phase === 'voice') {
+    document.getElementById('questionText').textContent = '此动作需要发声，请选择：';
+    grid.className = 'options-grid voice-mode';
+
+    const voices = shuffle(['哈', '嘿']);
+    voices.forEach(v => {
+      const btn = document.createElement('button');
+      btn.className = 'opt-btn ' + (v === '哈' ? 'voice-ha' : 'voice-hei');
+      btn.textContent = v;
+      btn.onclick = () => handleVoiceClick(btn, v, MOVES[curIdx].voice);
+      grid.appendChild(btn);
+    });
+    return;
+  }
+
+  // ── 动作选择阶段 ──────────────────────────
+  document.getElementById('questionText').textContent = '下一个动作是？';
+  grid.className = 'options-grid';
+
+  const pool = next.duo ? DUO_POOL : SOLO_POOL;
+  // 保证有足够的干扰项（对练池只有4个，此处取 min(3, pool.length-1)）
+  const numDistractors = Math.min(3, pool.length - 1);
+  const distractors = getRandom(pool, next.name, numDistractors);
+  // 显式把正确答案加入选项，确保必定出现
+  const options = shuffle([next.name, ...distractors]);
+
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = opt;
+    btn.onclick = () => handleActionClick(btn, opt, next);
+    grid.appendChild(btn);
+  });
+}
+
+// ════════════════════════════════════════════
+//  点击处理 — 动作选择
+// ════════════════════════════════════════════
+function handleActionClick(btn, chosen, next) {
+  if (locked) return;
+  locked = true;
+  totalAnswers++;
+
+  const allBtns = document.querySelectorAll('#optionsGrid .opt-btn');
+
+  if (chosen === next.name) {
+    btn.classList.add('correct');
+    document.getElementById('feedback').textContent = '✓ 正确！';
+    document.getElementById('feedback').className = 'feedback ok';
+
+    setTimeout(() => {
+      curIdx++;
+      // 检查下一动作是否需要先发声
+      const cur = MOVES[curIdx];
+      if (cur.voice) {
+        phase = 'voice';
+      } else {
+        phase = 'action';
+      }
+      updateAll();
+    }, 700);
+
+  } else {
+    wrongCount++;
+    btn.classList.add('wrong');
+    // 高亮正确答案
+    allBtns.forEach(b => {
+      if (b.textContent === next.name) b.classList.add('reveal');
+    });
+    document.getElementById('feedback').textContent = '✗ 答错了，正确答案已标出';
+    document.getElementById('feedback').className = 'feedback err';
+
+    // 1.5s 后解锁，允许重新选择
+    setTimeout(() => {
+      allBtns.forEach(b => {
+        b.classList.remove('wrong', 'reveal');
+        b.disabled = false;
+      });
+      document.getElementById('feedback').textContent = '';
+      locked = false;
+    }, 1500);
+  }
+}
+
+// ════════════════════════════════════════════
+//  点击处理 — 发声选择
+// ════════════════════════════════════════════
+function handleVoiceClick(btn, chosen, correct) {
+  if (locked) return;
+  locked = true;
+  totalAnswers++;
+
+  if (chosen === correct) {
+    btn.classList.add('correct');
+    document.getElementById('feedback').textContent = '✓ 对！发「' + correct + '」';
+    document.getElementById('feedback').className = 'feedback ok';
+    setTimeout(() => {
+      phase = 'action';
+      updateAll();
+    }, 700);
+  } else {
+    wrongCount++;
+    btn.classList.add('wrong');
+    document.querySelectorAll('#optionsGrid .opt-btn').forEach(b => {
+      if (b.textContent === correct) b.classList.add('reveal');
+    });
+    document.getElementById('feedback').textContent = '✗ 应发「' + correct + '」';
+    document.getElementById('feedback').className = 'feedback err';
+    setTimeout(() => {
+      document.querySelectorAll('#optionsGrid .opt-btn').forEach(b => {
+        b.classList.remove('wrong', 'reveal');
+        b.disabled = false;
+      });
+      document.getElementById('feedback').textContent = '';
+      locked = false;
+    }, 1500);
+  }
+}
+
+// ════════════════════════════════════════════
+//  启动套路
+// ════════════════════════════════════════════
+function startRoutine(key) {
+  const routine = ROUTINES[key];
+  if (!routine) return;
+
+  currentRoutine = key;
+  MOVES = routine.moves;
+
+  // 构建选项池（排除起势）
+  SOLO_POOL = MOVES.filter(m => !m.duo && m.id !== '起').map(m => m.name);
+  DUO_POOL  = MOVES.filter(m => m.duo).map(m => m.name);
+
+  curIdx = 0;
+  phase = MOVES[0].voice ? 'voice' : 'action';
+  locked = false;
+  totalAnswers = 0;
+  wrongCount = 0;
+
+  document.getElementById('selectScreen').classList.add('hidden');
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+
+  updateAll();
+}
+
+// ════════════════════════════════════════════
+//  统一更新页面
+// ════════════════════════════════════════════
+function updateAll() {
+  renderBeatBar();
+  renderCards();
+  renderProgress();
+  renderOptions();
+}
+
+// ════════════════════════════════════════════
+//  完成页
+// ════════════════════════════════════════════
+function showFinish() {
+  document.getElementById('mainArea').style.display = 'none';
+  document.getElementById('beatBar').style.display = 'none';
+  const fs = document.getElementById('finishScreen');
+  fs.classList.add('show');
+
+  const acc = totalAnswers > 0
+    ? Math.round(((totalAnswers - wrongCount) / totalAnswers) * 100)
+    : 100;
+  document.getElementById('statTotal').textContent = totalAnswers;
+  document.getElementById('statWrong').textContent = wrongCount;
+  document.getElementById('statAcc').textContent = acc + '%';
+
+  let msg = '';
+  if (acc === 100) msg = '完美！一次都没错，你已经把套路刻进脑子里了 🎉';
+  else if (acc >= 85) msg = '非常棒！再多练几遍就能完美掌握套路了 💪';
+  else if (acc >= 70) msg = '不错！对部分动作还需要再加强记忆哦 📖';
+  else msg = '继续加油！多刷几遍，套路一定能背下来的 🥋';
+  document.getElementById('finishSub').textContent = msg;
+}
+
+function restart() {
+  document.getElementById('finishScreen').classList.remove('show');
+  document.getElementById('mainArea').style.display = '';
+  document.getElementById('beatBar').style.display = '';
+  document.getElementById('selectScreen').classList.remove('hidden');
+}
+
+// ════════════════════════════════════════════
+//  启动
+// ════════════════════════════════════════════
+// 初始显示套路选择页，由用户选择后调用 startRoutine()
+setupSlider();
+</script>
+</body>
+</html>
